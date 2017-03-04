@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # update the system
-apt-get update
-apt-get upgrade
+yum -y update
+yum -y upgrade
 
 ################################################################################
 # This is a port of the JHipster Dockerfile,
@@ -12,41 +12,37 @@ apt-get upgrade
 export LANGUAGE='en_US.UTF-8'
 export LANG='en_US.UTF-8'
 export LC_ALL='en_US.UTF-8'
-locale-gen en_US.UTF-8
-dpkg-reconfigure locales
 
 # install utilities
-apt-get -y install vim git zip bzip2 fontconfig curl language-pack-en
+yum -y install vim git zip bzip2 fontconfig curl language-pack-en
 
 # install Java 8
-echo 'deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main' >> /etc/apt/sources.list
-echo 'deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main' >> /etc/apt/sources.list
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C2518248EEA14886
+cd /opt/
+wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u121-b13/e9e7ea248e2c4826b92b3f075a80e441/jdk-8u121-linux-x64.tar.gz"
+tar xzf jdk-8u121-linux-x64.tar.gz
+rm -f jdk-8u121-linux-x64.tar.gz
+export JAVA_HOME=/opt/jdk1.8.0_121
+export JRE_HOME=/opt/jdk1.8.0_121/jre
+export PATH=$PATH:/opt/jdk1.8.0_121/bin:/opt/jdk1.8.0_121/jre/bin
 
-apt-get update
+# install development tools
+yum install -y unzip python gcc gcc-c++ make openssl-devel kernel-devel
 
-echo oracle-java-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-apt-get install -y --force-yes oracle-java8-installer
-update-java-alternatives -s java-8-oracle
+# install nodejs
+curl --silent --location https://rpm.nodesource.com/setup_7.x | bash -
+yum install -y nodejs
 
-# install node.js
-curl -sL https://deb.nodesource.com/setup_6.x | bash -
-apt-get install -y nodejs unzip python g++ build-essential
-
-# update npm
+# install npm
 npm install -g npm
 
-# install yarn
-npm install -g yarn
-
-# install yeoman grunt bower gulp
-yarn global add yo bower gulp
+# install yeoman bower gulp
+npm install -g yo grunt-cli bower gulp
 
 # install JHipster
-yarn global add generator-jhipster@4.0.7
+npm install -g generator-jhipster
 
 # install JHipster UML
-yarn global add jhipster-uml@2.0.3
+npm install -g jhipster-uml
 
 ################################################################################
 # Install the graphical environment
@@ -61,66 +57,35 @@ echo 'LC_CTYPE=en_US.UTF-8' >> /etc/environment
 # run GUI as non-privileged user
 echo 'allowed_users=anybody' > /etc/X11/Xwrapper.config
 
-# install Ubuntu desktop and VirtualBox guest tools
-apt-get install -y xubuntu-desktop virtualbox-guest-dkms virtualbox-guest-utils virtualbox-guest-x11
+# install a graphical desktop, make it the default
+yum groupinstall -y "GNOME Desktop" "Graphical Administration Tools"
+systemctl set-default graphical.target
+
+# for installing Virtual Box Additions
+# do this second so Xwindows is there before the additions run
+mount /dev/sr0 /mnt
+sh /mnt/VBoxLinuxAdditions.run
+umount /dev/sr0 /mnt
 
 # remove light-locker (see https://github.com/jhipster/jhipster-devbox/issues/54)
-apt-get remove -y light-locker --purge
-
-# change the default wallpaper
-#wget https://jhipster.github.io/images/wallpaper-004-2560x1440.png -O /usr/share/xfce4/backdrops/jhipster-wallpaper.png
-wget https://raw.githubusercontent.com/jhipster/jhipster-devbox/master/images/jhipster-wallpaper.png -O /usr/share/xfce4/backdrops/jhipster-wallpaper.png
-sed -i -e 's/xubuntu-wallpaper.png/jhipster-wallpaper.png/' /etc/xdg/xdg-xubuntu/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+yum remove -y light-locker
 
 ################################################################################
 # Install the development tools
 ################################################################################
 
-# install Ubuntu Make - see https://wiki.ubuntu.com/ubuntu-make
-
-add-apt-repository -y ppa:ubuntu-desktop/ubuntu-make
-
-apt-get update
-apt-get upgrade
-
-apt install -y ubuntu-make
-
 # install Chromium Browser
-apt-get install -y chromium-browser
-
-# install MySQL Workbench
-apt-get install -y mysql-workbench
-
-# install PgAdmin
-apt-get install -y pgadmin3
-
-# install cqlsh
-apt-get install -y python-pip
-pip install cqlsh
-
-# install mongo client
-apt-get install -y mongodb-clients
-
-# install Heroku toolbelt
-wget -O- https://toolbelt.heroku.com/install-ubuntu.sh | sh
+yum install -y google-chrome-stable.`uname -m`
 
 # install Cloud Foundry client
 cd /opt && curl -L "https://cli.run.pivotal.io/stable?release=linux64-binary&source=github" | tar -zx
 ln -s /opt/cf /usr/bin/cf
 
-# install the AWS tools
-pip install awscli
-yarn global add aws-sdk progress node-uuid
-
-#install Guake
-apt-get install -y guake
-cp /usr/share/applications/guake.desktop /etc/xdg/autostart/
-
 # install zsh
-apt-get install -y zsh
+yum install -y zsh
 
 # install oh-my-zsh
-git clone git://github.com/robbyrussell/oh-my-zsh.git /home/vagrant/.oh-my-zsh
+git clone https://github.com/robbyrussell/oh-my-zsh.git /home/vagrant/.oh-my-zsh
 cp /home/vagrant/.oh-my-zsh/templates/zshrc.zsh-template /home/vagrant/.zshrc
 chsh -s /bin/zsh vagrant
 echo 'SHELL=/bin/zsh' >> /etc/environment
@@ -132,47 +97,22 @@ sed -i -e "s/plugins=(git)/plugins=(git docker docker-compose jhipster)/g" /home
 # change user to vagrant
 chown -R vagrant:vagrant /home/vagrant/.zshrc /home/vagrant/.oh-my-zsh
 
-# install Visual Studio Code
-su -c 'umake ide visual-studio-code /home/vagrant/.local/share/umake/ide/visual-studio-code --accept-license' vagrant
-
-# fix links (see https://github.com/ubuntu/ubuntu-make/issues/343)
-sed -i -e 's/visual-studio-code\/code/visual-studio-code\/bin\/code/' /home/vagrant/.local/share/applications/visual-studio-code.desktop
-
-# disable GPU (see https://code.visualstudio.com/docs/supporting/faq#_vs-code-main-window-is-blank)
-sed -i -e 's/"$CLI" "$@"/"$CLI" "--disable-gpu" "$@"/' /home/vagrant/.local/share/umake/ide/visual-studio-code/bin/code
-
-# install useful extensions
-ln -sf /home/vagrant/.local/share/umake/ide/visual-studio-code/bin/code /usr/local/bin/code
-su -c 'code --install-extension redhat.java' vagrant
-su -c 'code --install-extension johnpapa.Angular1' vagrant
-su -c 'code --install-extension johnpapa.Angular2' vagrant
-su -c 'code --install-extension msjsdiag.debugger-for-chrome' vagrant
-su -c 'code --install-extension dbaeumer.vscode-eslint' vagrant
-su -c 'code --install-extension EditorConfig.EditorConfig' vagrant
-
-#install IDEA community edition
-su -c 'umake ide idea /home/vagrant/.local/share/umake/ide/idea' vagrant
-
-# increase Inotify limit (see https://confluence.jetbrains.com/display/IDEADEV/Inotify+Watches+Limit)
-echo "fs.inotify.max_user_watches = 524288" > /etc/sysctl.d/60-inotify.conf
-sysctl -p --system
-
 # install Docker
 curl -sL https://get.docker.io/ | sh
+service docker start
 
 # install docker compose
-curl -L https://github.com/docker/compose/releases/download/1.10.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+curl -k -L https://github.com/docker/compose/releases/download/1.10.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
 # configure docker group (docker commands can be launched without sudo)
 usermod -aG docker vagrant
 
-# fix ownership of yarn cache
-chown -R vagrant:vagrant /home/vagrant/.yarn-cache
+# configure vboxsf group (ensure vagrant can access the shared folder mapped by Host at /media/sf_xxx)
+usermod -aG vboxsf vagrant
 
 # clean the box
-apt-get -y autoclean
-apt-get -y clean
-apt-get -y autoremove
+yum -y clean all
+yum -y autoremove
 dd if=/dev/zero of=/EMPTY bs=1M > /dev/null 2>&1
 rm -f /EMPTY
